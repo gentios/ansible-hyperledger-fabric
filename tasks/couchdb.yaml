@@ -1,0 +1,10 @@
+-
+    name: 'Install CouchDB chart'
+    helm:
+        host: localhost
+        chart:
+            name: stable/hlf-couchdb
+        values: './helm_values/cdb-peer${NUM}_values.yaml'
+        state: installed
+        name: 'cdb-peer${NUM}'
+        namespace: blockchain

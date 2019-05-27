@@ -1,0 +1,10 @@
+-
+    name: 'Install Kafka chart'
+    helm:
+        host: localhost
+        chart:
+            name: incubator/kafka
+        values: ./helm_values/kafka-hlf_values.yaml
+        state: installed
+        name: kafka-hlf
+        namespace: blockchain

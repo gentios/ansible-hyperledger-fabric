@@ -1,0 +1,46 @@
+-
+    name: 'Register orderer with CA'
+    command: 'kubectl exec -n blockchain $CA_POD -- fabric-ca-client register --id.name peer${NUM} --id.secret peer${NUM}_pw --id.type peer'
+-
+    name: 'Create ENV VAR for Peer 1'
+    shell: 'echo $FABRIC_CA_CLIENT_HOME=./config fabric-ca-client enroll -d -u https://peer${NUM}:peer${NUM}_pw@$CA_INGRESS -M peer${NUM}_MSP'
+    environment:
+        FABRIC_CA_CLIENT_HOME: $FABRIC_CA_CLIENT_HOME
+-
+    name: 'Create ENV VAR for orderer certificate key'
+    shell: 'echo $NODE_KEY=$(ls ./config/peer${NUM}_MSP/keystore/*_sk)'
+    environment:
+        NODE_KEY: $NODE_KEY
+-
+    name: 'Save orderer certificate key in secret'
+    command: 'kubectl create secret generic -n blockchain hlf--peer${NUM}-idcert --from-file=cert.pem=${NODE_CERT}'
+-
+    name: 'Create ENV VAR for orderer private key'
+    shell: 'echo $NODE_KEY=$(ls ./config/peer${NUM}_MSP/keystore/*_sk)'
+    environment:
+        NODE_KEY: $NODE_KEY
+-
+    name: 'Create orderer pricate key in secret'
+    command: 'kubectl create secret generic -n blockchain hlf--peer${NUM}-idkey --from-file=key.pem=${NODE_KEY}'
+-
+    name: 'Import CouchDB tasks'
+    import_tasks: ./couchdb.yaml
+-
+    name: 'Install Peer${NUM} chart'
+    helm:
+        host: localhost
+        chart:
+            name: stable/hlf-peer
+        values: './helm_values/peer${NUM}_values.yaml'
+        state: installed
+        name: 'peer${NUM}'
+        namespace: blockchain
+-
+    name: 'Create channel'
+    command: 'kubectl exec -n blockchain $PEER_POD -- peer channel create -o ord1-hlf-ord.blockchain.svc.cluster.local:7050 -c mychannel -f /hl_config/channel/mychannel.tx'
+-
+    name: 'Fetch and join channel'
+    command: 'kubectl exec -n blockchain $PEER_POD -- peer channel fetch config /var/hyperledger/mychannel.block -c mychannel -o ord1-hlf-ord.blockchain.svc.cluster.local:7050'
+-
+    name: 'Fetch and join channel'
+    command: 'kubectl exec -n blockchain $PEER_POD -- bash -c ''CORE_PEER_MSPCONFIGPATH=$ADMIN_MSP_PATH peer channel join -b /var/hyperledger/mychannel.block'''

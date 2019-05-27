@@ -1,0 +1,34 @@
+-
+    name: 'Register Order 1 with CA'
+    command: 'kubectl exec -n blockchain $CA_POD -- fabric-ca-client register --id.name ord${NUM} --id.secret ord${NUM}_pw --id.type orderer'
+-
+    name: 'Register Order 1 with CA'
+    shell: 'echo $FABRIC_CA_CLIENT_HOME=./config fabric-ca-client enroll -d -u https://ord${NUM}:ord${NUM}_pw@$CA_INGRESS -M ord${NUM}_MSP'
+    environment:
+        FABRIC_CA_CLIENT_HOME: $FABRIC_CA_CLIENT_HOME
+-
+    name: 'Create ENV VAR for Order 1 cert'
+    shell: 'echo $NODE_CERT=$(ls ./config/ord${NUM}_MSP/signcerts/*.pem)'
+    environment:
+        NODE_CERT: $NODE_CERT
+-
+    name: 'Create Order certificate secret'
+    command: 'kubectl create secret generic -n blockchain hlf--ord${NUM}-idcert --from-file=cert.pem=${NODE_CERT}'
+-
+    name: 'Create ENV VAR for Order 1 private key'
+    shell: 'echo $NODE_KEY=$(ls ./config/ord${NUM}_MSP/keystore/*_sk)'
+    environment:
+        NODE_KEY: $NODE_KEY
+-
+    name: 'Create order private key in secret'
+    command: 'kubectl create secret generic -n blockchain hlf--ord${NUM}-idkey --from-file=key.pem=${NODE_KEY}'
+-
+    name: 'Install Order 1 chart'
+    helm:
+        host: localhost
+        chart:
+            name: stable/hlf-ord
+        values: './helm_values/ord${NUM}_values.yaml'
+        state: installed
+        name: 'ord${NUM}'
+        namespace: blockchain

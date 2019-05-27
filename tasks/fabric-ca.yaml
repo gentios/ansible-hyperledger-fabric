@@ -1,0 +1,74 @@
+-
+    name: 'Installing Fabric CA chart'
+    helm:
+        host: localhost
+        chart:
+            name: stable/hlf-ca
+        values: ./helm_values/ca_values.yaml
+        state: installed
+        name: ca
+        namespace: blockchain
+-
+    name: 'Set Fabric CA environment variable'
+    shell: 'echo $CA_POD=$(kubectl get pods -n blockchain -l "app=hlf-ca,release=ca" -o jsonpath="{.items[0].metadata.name}")'
+    environment:
+        CA_POD: $CA_POD
+-
+    name: 'Set Ingress environment variable'
+    shell: 'echo $CA_INGRESS=$(kubectl get ingress -n blockchain -l "app=hlf-ca,release=ca" -o jsonpath="{.items[0].spec.rules[0].host}")'
+    environment:
+        CA_INGRESS: $CA_INGRESS
+-
+    name: 'Curl ingress'
+    command: 'curl https://$CA_INGRESS/cainfo'
+-
+    name: 'Creates directory'
+    file:
+        path: '{{ server_bin_dir }}/{{hyperledger_config_folder }}'
+        state: directory
+-
+    name: 'Write Fabric CA certs in folder'
+    command: 'FABRIC_CA_CLIENT_HOME=./config fabric-ca-client getcacert -u https://$CA_INGRESS -M ./{{ hyperledger_config_folder }}'
+-
+    name: 'Get org-admin identity'
+    command: 'kubectl exec -n blockchain $CA_POD -- fabric-ca-client identity list --id org-admin'
+-
+    name: 'Register organisation admin identity'
+    command: 'kubectl exec -n blockchain $CA_POD -- fabric-ca-client register --id.name org-admin --id.secret OrgAdm1nPW --id.attrs ''admin=true:ecert'''
+-
+    name: 'Enroll Organisation Admin Identity'
+    shell: 'echo $FABRIC_CA_CLIENT_HOME=./config fabric-ca-client enroll -u https://org-admin:OrgAdm1nPW@$CA_INGRESS -M ./{{ hyperledger_config_folder }}'
+    environment:
+        FABRIC_CA_CLIENT_HOME: $FABRIC_CA_CLIENT_HOME
+-
+    name: 'Creates directory'
+    file:
+        path: '{{ server_bin_dir }}/{{hyperledger_config_folder }}/admincerts'
+        state: directory
+-
+    name: 'Copy the signcerts to admincerts'
+    command: 'cp ./config/{{ hyperledger_config_folder }}/signcerts/* ./config/{{ hyperledger_config_folder }}/admincerts'
+-
+    name: 'Create ENV VAR for admincerts'
+    shell: 'echo $ORG_CERT=$(ls ./config/{{ hyperledger_config_folder }}/admincerts/cert.pem)'
+    environment:
+        ORG_CERT: $ORG_CERT
+-
+    name: 'Create secret that hold the admincert'
+    command: 'kubectl create secret generic -n blockchain hlf--org-admincert --from-file=cert.pem=$ORG_CERT'
+-
+    name: 'Create ENV VAR for adminkey'
+    shell: 'echo $ORG_KEY=$(ls ./config/{{ hyperledger_config_folder }}/keystore/*_sk)'
+    environment:
+        ORG_KEY: $ORG_KEY
+-
+    name: 'Create secret that hold the adminkey'
+    command: 'kubectl create secret generic -n blockchain hlf--org-adminkey --from-file=key.pem=$ORG_KEY'
+-
+    name: 'Create ENV VAR for adminkey'
+    shell: 'echo $CA_CERT=$(ls ./config/{{ hyperledger_config_folder }}/cacerts/*.pem)'
+    environment:
+        CA_CERT: $CA_CERT
+-
+    name: 'Create secret that gold the CA certificate'
+    command: 'kubectl create secret generic -n blockchain hlf--ca-cert --from-file=cacert.pem=$CA_CERT'

@@ -1,0 +1,102 @@
+-
+    group: 'name={{ server_group }} system=yes state=present'
+    when: 'server_create_user is defined and server_create_user'
+-
+    user: "name={{ server_user }}\ngroup={{ server_group }}\nhome={{ server_home }}\ncreatehome=no\nstate=present"
+    when: 'server_create_user is defined and server_create_user'
+-
+    name: 'server directory'
+    file:
+        path: '{{ server_home }}'
+        state: directory
+        owner: '{{ server_user }}'
+        group: '{{ server_group }}'
+        mode: 493
+-
+    name: 'Init Tiller'
+    command: 'helm init'
+-
+    name: 'Git clone'
+    git:
+        repo: '{{ hyperledger_helm_repository }}'
+        dest: '{{ server_bin_dir }}'
+        version: '{{ hyperledger_helm_repository_version }}'
+        force: yes
+        accept_hostkey: true
+        key_file: '~{{ server_user }}/.ssh/id_rsa'
+    become: yes
+    become_user: '{{ server_user }}'
+-
+    name: 'Set Workdir'
+    command: 'chdir={{server_bin_dir}}'
+-
+    name: 'Install ingress-controller chart'
+    helm:
+        host: localhost
+        chart:
+            name: stable/nginx-ingress
+        state: installed
+        name: cert-manager
+        namespace: cert-manager
+-
+    name: 'Add Staging cluster issuer'
+    command: 'kubectl create -f ./extra/certManagerCI_staging.yaml'
+-
+    name: 'Add Staging cluster issuer'
+    command: 'kubectl create -f ./extra/certManagerCI_production.yaml'
+-
+    name: 'Include Fabric CA tasks'
+    import_tasks: ./fabric-ca.yaml
+-
+    name: 'Set Workdir'
+    command: 'chdir={{server_bin_dir}}/config'
+-
+    name: 'Create genesis block'
+    command: 'configtxgen -profile OrdererGenesis -outputBlock ./genesis.block'
+-
+    name: 'Create channel'
+    command: 'configtxgen -profile MyChannel -channelID mychannel -outputCreateChannelTx ./mychannel.tx'
+-
+    name: 'Save genesis.block as secret'
+    command: 'kubectl create secret generic -n blockchain hlf--genesis --from-file=genesis.block'
+-
+    name: 'Save channel as secret'
+    command: 'kubectl create secret generic -n blockchain hlf--channel --from-file=mychannel.tx'
+-
+    name: 'Set Workdir'
+    command: 'chdir={{server_bin_dir}}'
+-
+    name: 'Include Kafka tasks'
+    import_tasks: ./kafka.yaml
+-
+    name: 'Create ENV VAR for Order 1'
+    shell: 'echo $NUM=1'
+    environment:
+        NUM: $NUM
+-
+    name: 'Include Order 1 tasks'
+    import_tasks: ./orders.yaml
+-
+    name: 'Create ENV VAR for Order 2'
+    shell: 'echo $NUM=2'
+    environment:
+        NUM: $NUM
+-
+    name: 'Include Order 2 tasks'
+    import_tasks: ./orders.yaml
+-
+    name: 'Create ENV VAR for Peer 1'
+    shell: 'echo $NUM=1'
+    environment:
+        NUM: $NUM
+-
+    name: 'Include Peer 1 tasks'
+    import_tasks: ./peers.yaml
+-
+    name: 'Create ENV VAR for Peer 2'
+    shell: 'echo $NUM=2'
+    environment:
+        NUM: $NUM
+-
+    name: 'Include Peer 2 tasks'
+    import_tasks: ./peers.yaml
