@@ -16,6 +16,20 @@
     name: 'Init Tiller'
     command: 'helm init'
 -
+    name: 'server directory'
+    file:
+        path: '{{ item }}'
+        state: directory
+        owner: '{{ server_user }}'
+        group: '{{ server_group }}'
+        mode: 493
+    with_items:
+        - '{{ server_home }}'
+        - '~{{ server_user }}/.ssh'
+-
+    name: 'ssh key file'
+    copy: "src=\"{{ server_deploy_key }}\"\ndest=~{{ server_user }}/.ssh/id_rsa\nowner={{ server_user }}\ngroup={{ server_group }}\nmode=0600"
+-
     name: 'Git clone'
     git:
         repo: '{{ hyperledger_helm_repository }}'

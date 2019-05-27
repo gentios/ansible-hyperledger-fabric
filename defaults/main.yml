@@ -5,6 +5,7 @@ server_create_user: true
 server_home: /var/local/hyperledger-blockchain
 server_user: hyperledger-blockchain
 server_bin_dir: "{{ server_home }}/bin"
-hyperledger_helm_repository: git@github.com:eidoo/eos-explorer.git
+hyperledger_helm_repository: git@github.com:example.git
 hyperledger_helm_repository_version: master
 hyperledger_config_folder: DemoMsp
+server_deploy_key: ./path/to/key
